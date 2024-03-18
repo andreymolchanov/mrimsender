@@ -105,6 +105,7 @@ const getFormValues = (): Array<FieldParam> => {
           'creationByAllMembers',
           'allowedCreateChatLink',
           'allowedDeleteReplyMessage',
+          'allowedHandleCfValues',
         ].includes(f.field)
     )
 }
@@ -274,7 +275,7 @@ const renderAdditionalSettings = (settings: EditableSettings): ReactElement => {
     },
   ] as IUserPickerItem[]
   const assingeeValue = settings.assignee === '-1' ? auto : settings.assignee
-    return (
+  return (
     <>
       <h3>Дополнительные настройки</h3>
       <CheckboxField
@@ -282,13 +283,35 @@ const renderAdditionalSettings = (settings: EditableSettings): ReactElement => {
         defaultIsChecked={settings.allowedDeleteReplyMessage}
       >
         {({ fieldProps }) => (
-           <Checkbox
-             label="Разрешить удалять сообщение с reply"
-             size="large"
-             defaultChecked={settings.allowedDeleteReplyMessage}
-             // eslint-disable-next-line react/jsx-props-no-spreading
-             {...fieldProps}
-           />
+          <Checkbox
+            label="Разрешить удалять сообщение с reply"
+            size="large"
+            defaultChecked={settings.allowedDeleteReplyMessage}
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            {...fieldProps}
+          />
+        )}
+      </CheckboxField>
+      <CheckboxField
+        name="allowedHandleCfValues"
+        defaultIsChecked={settings.allowedHandleCfValues}
+      >
+        {({ fieldProps }) => (
+          <>
+            <Checkbox
+              label="Разрешить обрабатывать значения пользовательские поля в сообщении"
+              size="large"
+              defaultChecked={settings.allowedHandleCfValues}
+              // eslint-disable-next-line react/jsx-props-no-spreading
+              {...fieldProps}
+            />
+            <LineHelperMessage>{`Для передачи пользовательских полей
+            необходимо следовать шаблону, например:
+            #tag @BotMention
+            #cf10002=значения_поля#
+            #cf10001=значение_поля#
+            и т.д`}</LineHelperMessage>
+          </>
         )}
       </CheckboxField>
       <CheckboxField
@@ -571,6 +594,7 @@ function EditIssueCreationSettingsForm({
           labels,
           allowedCreateChatLink,
           allowedDeleteReplyMessage,
+          allowedHandleCfValues,
           creationByAllMembers,
           reporter,
           assignee,
@@ -584,6 +608,7 @@ function EditIssueCreationSettingsForm({
             tag,
             allowedCreateChatLink,
             allowedDeleteReplyMessage,
+            allowedHandleCfValues,
             creationByAllMembers,
             reporter,
             assignee,

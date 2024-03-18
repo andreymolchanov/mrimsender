@@ -94,4 +94,8 @@ public interface IssueCreationSettings extends Entity {
 
   @Indexed
   Long getProjectId();
+
+  void setAllowedHandleCfValues(boolean allowedHandleCfValues);
+
+  boolean isAllowedHandleCfValues();
 }

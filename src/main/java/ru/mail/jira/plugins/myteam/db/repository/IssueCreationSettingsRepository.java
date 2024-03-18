@@ -52,6 +52,7 @@ public class IssueCreationSettingsRepository
           entity.setAllowedCreateChatLink(Boolean.TRUE.equals(dto.getAllowedCreateChatLink()));
           entity.setAllowedDeleteReplyMessage(
               Boolean.TRUE.equals(dto.getAllowedDeleteReplyMessage()));
+          entity.setAllowedHandleCfValues(Boolean.TRUE.equals(dto.getAllowedHandleCfValues()));
 
           if (dto.getAdditionalFields() != null) {
             Map<String, AdditionalIssueField> entityAdditionalFields = new HashMap<>();

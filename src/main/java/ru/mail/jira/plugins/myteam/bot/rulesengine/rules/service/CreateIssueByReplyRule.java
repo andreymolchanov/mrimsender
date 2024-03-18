@@ -70,7 +70,8 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   private static final Pattern ISSUE_KEY_LABEL_PATTERN = Pattern.compile("\\{\\{issueKey\\}\\}");
   private static final Pattern ISSUE_LINK_LABEL_PATTERN = Pattern.compile("\\{\\{issueLink\\}\\}");
   private static final Pattern SUMMARY_LABEL_PATTERN = Pattern.compile("\\{\\{summary\\}\\}");
-
+  private static final Pattern CF_DATA_PATTERN =
+      Pattern.compile("(#cf\\d+)=((.+?)([^+]*?)#)", Pattern.MULTILINE);
   private final IssueCreationSettingsService issueCreationSettingsService;
   private final IssueCreationService issueCreationService;
   private final IssueService issueService;
@@ -143,9 +144,22 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
 
       HashMap<Field, String> fieldValues = new HashMap<>();
 
+      String textForResolvingSummary = event.getMessage();
+      if (Boolean.TRUE.equals(settings.getAllowedHandleCfValues())) {
+        CustomFieldDataExtractor.CustomFieldDataAndTextForResolvingSummary
+            customFieldDataAndTextForResolvingSummary =
+                resolveMainMessageOnCustomFieldData(event.getMessage());
+        customFieldDataAndTextForResolvingSummary
+            .getCustomFieldData()
+            .forEach(it -> fieldValues.put(it.getField(), it.getCfValue()));
+        textForResolvingSummary =
+            customFieldDataAndTextForResolvingSummary.getTextForResolvingSummary();
+      }
+
       SummaryAndDescriptionStatusFromMainMessage summary =
           getIssueSummary(
               event,
+              textForResolvingSummary,
               settings.getIssueSummaryTemplate(),
               firstMessageReporter,
               event.getFrom(),
@@ -175,7 +189,8 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
           eventMessagesTextConverter.findLinksInMainMessage(event);
       String description;
       String descFromMainMessage =
-          createFirstPartOfDescriptionByMainMessageText(event, linksInMessageInMainMessage, tag);
+          createFirstPartOfDescriptionByMainMessageText(
+              event, linksInMessageInMainMessage, tag, summary);
       if (summary.addDescFromParts) {
         description =
             buildFullDescFromMainAndReplyMessages(
@@ -283,6 +298,17 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
               String.format(
                   "Возникла ошибка при создании задачи.%n%n%s", e.getLocalizedMessage())));
     }
+  }
+
+  private CustomFieldDataExtractor.CustomFieldDataAndTextForResolvingSummary
+      resolveMainMessageOnCustomFieldData(final String mainEventMessage) {
+    final CustomFieldDataExtractor customFieldDataExtractor =
+        new CustomFieldDataExtractor(issueCreationService);
+    String cleanedMessageFromCfData =
+        JiraMarkdownToChatMarkdownConverter.convertToMarkdown(
+            mainEventMessage, CF_DATA_PATTERN, customFieldDataExtractor);
+    return new CustomFieldDataExtractor.CustomFieldDataAndTextForResolvingSummary(
+        customFieldDataExtractor.getCustomFieldData(), cleanedMessageFromCfData);
   }
 
   private void tryDeleteMessageWithCreateIssueCommand(ChatMessageEvent event) {
@@ -393,16 +419,28 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
 
   private SummaryAndDescriptionStatusFromMainMessage getIssueSummary(
       ChatMessageEvent event,
+      String messageWithoutCfData,
       String template,
       User firstMessageReporter,
       User initiator,
       String tag) {
 
-    String message = event.getMessage();
+    String message = messageWithoutCfData;
 
     String comment = replaceBotMentionAndCommand(message, tag);
     if (comment.length() != 0) {
-      List<String> split = NEW_LINE_SPLITTER.splitToList(comment);
+      StringBuilder summaryBuilder = new StringBuilder();
+      boolean firstNewLineForResolvingSummaryFound = false;
+      for (int i = 0; i < comment.length(); i++) {
+        char c = comment.charAt(i);
+        if (c == '\n' && !firstNewLineForResolvingSummaryFound) {
+          firstNewLineForResolvingSummaryFound = true;
+          summaryBuilder.append(c);
+        } else {
+          summaryBuilder.append(c);
+        }
+      }
+      List<String> split = NEW_LINE_SPLITTER.splitToList(summaryBuilder.toString());
       String summary;
       if (split.size() != 0) {
         summary = split.get(0);
@@ -410,9 +448,9 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
         summary = comment;
       }
       if (!event.isHasForwards() && !event.isHasReply()) {
-        return new SummaryAndDescriptionStatusFromMainMessage(summary, false);
+        return new SummaryAndDescriptionStatusFromMainMessage(summary, true, false);
       } else {
-        return new SummaryAndDescriptionStatusFromMainMessage(summary, true);
+        return new SummaryAndDescriptionStatusFromMainMessage(summary, true, false);
       }
     }
 
@@ -430,7 +468,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
       result = result.replaceAll(String.format("\\{\\{%s\\}\\}", entry.getKey()), entry.getValue());
     }
 
-    return new SummaryAndDescriptionStatusFromMainMessage(result, true);
+    return new SummaryAndDescriptionStatusFromMainMessage(result, false, true);
   }
 
   private String replaceBotMentionAndCommand(String message, String tag) {
@@ -441,15 +479,20 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   }
 
   private String createFirstPartOfDescriptionByMainMessageText(
-      final ChatMessageEvent event, final LinksInMessage linksInMessage, final String tag) {
-    return Arrays.stream(
-            replaceBotMentionAndCommand(
-                    eventMessagesTextConverter.convertToJiraMarkdownStyleMainMessage(
-                        event, linksInMessage),
-                    tag)
-                .split("\n"))
-        .skip(1)
-        .collect(Collectors.joining("\n"));
+      final ChatMessageEvent event,
+      final LinksInMessage linksInMessage,
+      final String tag,
+      final SummaryAndDescriptionStatusFromMainMessage summaryHolder) {
+    String firstPartOfDesc =
+        replaceBotMentionAndCommand(
+            eventMessagesTextConverter.convertToJiraMarkdownStyleMainMessage(event, linksInMessage),
+            tag);
+    if (summaryHolder.isCustomSummary) {
+      firstPartOfDesc =
+          firstPartOfDesc.replaceFirst(Matcher.quoteReplacement(summaryHolder.summary), "");
+    }
+
+    return firstPartOfDesc;
   }
 
   private String buildFullDescFromMainAndReplyMessages(
@@ -466,6 +509,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   @RequiredArgsConstructor
   private static class SummaryAndDescriptionStatusFromMainMessage {
     @NotNull private final String summary;
+    private final boolean isCustomSummary;
     private final boolean addDescFromParts;
   }
 }
