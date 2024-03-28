@@ -26,6 +26,7 @@ public enum CommandRuleType implements RuleType {
   PinMessage("pin"),
 
   AddWatchers("addWatchers"),
+  AddAttachment("attach"),
   ;
 
   @Getter(onMethod_ = {@Override})

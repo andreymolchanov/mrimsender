@@ -180,6 +180,8 @@ public class RulesEngineImpl
     commandsRuleEngine.registerRule(
         new AddWatchersToIssueCommandRule(
             userChatService, this, issueService, myteamApiClient, userSearchService));
+    commandsRuleEngine.registerRule(
+        new AddAttachmentsToIssueCommandRule(userChatService, this, issueService));
 
     // Service
     commandsRuleEngine.registerRule(new SearchByJqlIssuesRule(userChatService, this, issueService));

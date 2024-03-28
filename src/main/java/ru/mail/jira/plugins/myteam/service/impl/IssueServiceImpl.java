@@ -54,6 +54,7 @@ import ru.mail.jira.plugins.myteam.commons.exceptions.ValidationException;
 import ru.mail.jira.plugins.myteam.component.IssueTextConverter;
 import ru.mail.jira.plugins.myteam.component.UserData;
 import ru.mail.jira.plugins.myteam.component.comment.create.CommentCreateArg;
+import ru.mail.jira.plugins.myteam.myteam.dto.parts.File;
 import ru.mail.jira.plugins.myteam.service.IssueService;
 import ru.mail.jira.plugins.myteam.service.PluginData;
 
@@ -441,5 +442,11 @@ public class IssueServiceImpl implements IssueService {
       throw new NoPermissionException(
           "User " + commentAuthor + " can't create comment for issue " + issueToComment.getKey());
     }
+  }
+
+  @Override
+  public IssueTextConverter.@Nullable AttachUploadInfo attachFileToIssue(
+      final Issue issue, final File file, final ApplicationUser author) {
+    return issueTextConverter.attachFileToIssue(issue, file, author);
   }
 }
