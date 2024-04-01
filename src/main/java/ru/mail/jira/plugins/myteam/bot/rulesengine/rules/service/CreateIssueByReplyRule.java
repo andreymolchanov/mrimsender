@@ -2,7 +2,9 @@
 package ru.mail.jira.plugins.myteam.bot.rulesengine.rules.service;
 
 import static java.util.Collections.emptyList;
-import static ru.mail.jira.plugins.myteam.commons.Const.*;
+import static ru.mail.jira.plugins.myteam.commons.Const.DEFAULT_ISSUE_CREATION_SUCCESS_TEMPLATE;
+import static ru.mail.jira.plugins.myteam.commons.Const.DEFAULT_ISSUE_SUMMARY_TEMPLATE;
+import static ru.mail.jira.plugins.myteam.commons.Const.ISSUE_CREATION_BY_REPLY_PREFIX;
 
 import com.atlassian.jira.exception.NotFoundException;
 import com.atlassian.jira.issue.Issue;
@@ -17,7 +19,14 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -52,7 +61,11 @@ import ru.mail.jira.plugins.myteam.controller.dto.IssueCreationSettingsDto;
 import ru.mail.jira.plugins.myteam.myteam.dto.User;
 import ru.mail.jira.plugins.myteam.myteam.dto.parts.Forward;
 import ru.mail.jira.plugins.myteam.myteam.dto.parts.Reply;
-import ru.mail.jira.plugins.myteam.service.*;
+import ru.mail.jira.plugins.myteam.service.IssueCreationService;
+import ru.mail.jira.plugins.myteam.service.IssueCreationSettingsService;
+import ru.mail.jira.plugins.myteam.service.IssueService;
+import ru.mail.jira.plugins.myteam.service.RulesEngine;
+import ru.mail.jira.plugins.myteam.service.UserChatService;
 
 @Slf4j
 @Rule(
@@ -72,6 +85,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   private static final Pattern SUMMARY_LABEL_PATTERN = Pattern.compile("\\{\\{summary\\}\\}");
   private static final Pattern CF_DATA_PATTERN =
       Pattern.compile("(#cf\\d+)=((.+?)([^+]*?)#)", Pattern.MULTILINE);
+
   private final IssueCreationSettingsService issueCreationSettingsService;
   private final IssueCreationService issueCreationService;
   private final IssueService issueService;
@@ -131,7 +145,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
 
       List<User> reporters = getReportersFromEventParts(event);
 
-      User firstMessageReporter = reporters.size() > 0 ? reporters.get(0) : event.getFrom();
+      User firstMessageReporter = !reporters.isEmpty() ? reporters.get(0) : event.getFrom();
 
       ApplicationUser initiator = userChatService.getJiraUserFromUserChatId(event.getUserId());
 
@@ -428,7 +442,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
     String message = messageWithoutCfData;
 
     String comment = replaceBotMentionAndCommand(message, tag);
-    if (comment.length() != 0) {
+    if (!comment.isEmpty()) {
       StringBuilder summaryBuilder = new StringBuilder();
       boolean firstNewLineForResolvingSummaryFound = false;
       for (int i = 0; i < comment.length(); i++) {
@@ -442,11 +456,12 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
       }
       List<String> split = NEW_LINE_SPLITTER.splitToList(summaryBuilder.toString());
       String summary;
-      if (split.size() != 0) {
+      if (!split.isEmpty()) {
         summary = split.get(0);
       } else {
         summary = comment;
       }
+      // todo ???
       if (!event.isHasForwards() && !event.isHasReply()) {
         return new SummaryAndDescriptionStatusFromMainMessage(summary, true, false);
       } else {

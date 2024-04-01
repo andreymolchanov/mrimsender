@@ -46,7 +46,7 @@ public class IssueCreationSettingsRepository
           entity.setIssueQuoteMessageTemplate(dto.getIssueQuoteMessageTemplate());
           entity.setAssignee(dto.getAssignee());
           entity.setLabels(
-              (dto.getLabels() == null || dto.getLabels().size() == 0)
+              (dto.getLabels() == null || dto.getLabels().isEmpty())
                   ? null
                   : String.join(IssueCreationSettingsDto.LABELS_DELIMITER, dto.getLabels()));
           entity.setAllowedCreateChatLink(Boolean.TRUE.equals(dto.getAllowedCreateChatLink()));
