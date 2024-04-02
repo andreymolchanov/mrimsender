@@ -83,8 +83,9 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   private static final Pattern ISSUE_KEY_LABEL_PATTERN = Pattern.compile("\\{\\{issueKey\\}\\}");
   private static final Pattern ISSUE_LINK_LABEL_PATTERN = Pattern.compile("\\{\\{issueLink\\}\\}");
   private static final Pattern SUMMARY_LABEL_PATTERN = Pattern.compile("\\{\\{summary\\}\\}");
-  private static final Pattern CF_DATA_PATTERN =
-      Pattern.compile("(#cf\\d+)=((.+?)([^+]*?)#)", Pattern.MULTILINE);
+  private static final Pattern CF_CUSTOM_FIELDS_DATA_PATTERN =
+      Pattern.compile("(#cf\\d+)=(\"[^\"]*\"|[^ \\r\\n\\t\\f\\v]+)", Pattern.MULTILINE);
+  private static final String NO_DESCRIPTION_STRING = "Описание не заполнено";
 
   private final IssueCreationSettingsService issueCreationSettingsService;
   private final IssueCreationService issueCreationService;
@@ -209,13 +210,10 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
         description =
             buildFullDescFromMainAndReplyMessages(
                 descFromMainMessage, markdownFieldValueHolder.getValue());
-        fieldValues.put(
-            issueCreationService.getField(IssueFieldConstants.DESCRIPTION), description);
       } else {
         description = descFromMainMessage;
-        fieldValues.put(
-            issueCreationService.getField(IssueFieldConstants.DESCRIPTION), description);
       }
+      fieldValues.put(issueCreationService.getField(IssueFieldConstants.DESCRIPTION), description);
 
       String assigneeValue = settings.getAssignee();
       if (assigneeValue != null) {
@@ -320,7 +318,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
         new CustomFieldDataExtractor(issueCreationService);
     String cleanedMessageFromCfData =
         JiraMarkdownToChatMarkdownConverter.convertToMarkdown(
-            mainEventMessage, CF_DATA_PATTERN, customFieldDataExtractor);
+            mainEventMessage, CF_CUSTOM_FIELDS_DATA_PATTERN, customFieldDataExtractor);
     return new CustomFieldDataExtractor.CustomFieldDataAndTextForResolvingSummary(
         customFieldDataExtractor.getCustomFieldData(), cleanedMessageFromCfData);
   }
@@ -428,7 +426,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
         .convertMessagesFromReplyAndForwardMessages(event::getMessageParts, issue, template)
         .orElse(
             new EventMessagesTextConverter.MarkdownFieldValueHolder(
-                "Описание не заполнено", emptyList()));
+                NO_DESCRIPTION_STRING, emptyList()));
   }
 
   private SummaryAndDescriptionStatusFromMainMessage getIssueSummary(
@@ -461,11 +459,11 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
       } else {
         summary = comment;
       }
-      // todo ???
+
       if (!event.isHasForwards() && !event.isHasReply()) {
         return new SummaryAndDescriptionStatusFromMainMessage(summary, true, false);
       } else {
-        return new SummaryAndDescriptionStatusFromMainMessage(summary, true, false);
+        return new SummaryAndDescriptionStatusFromMainMessage(summary, true, true);
       }
     }
 
@@ -514,7 +512,8 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
       final String descFromMainMessage, final String fromReplyMessage) {
     if (StringUtils.isBlank(descFromMainMessage)) {
       return fromReplyMessage;
-    } else if (StringUtils.isBlank(fromReplyMessage)) {
+    } else if (StringUtils.isBlank(fromReplyMessage)
+        || fromReplyMessage.equalsIgnoreCase(NO_DESCRIPTION_STRING)) {
       return descFromMainMessage;
     } else {
       return descFromMainMessage + "\n\n" + fromReplyMessage;

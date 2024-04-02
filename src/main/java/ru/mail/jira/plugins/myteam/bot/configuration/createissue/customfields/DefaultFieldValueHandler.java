@@ -70,7 +70,7 @@ public class DefaultFieldValueHandler implements CreateIssueFieldValueHandler {
     return mapUserInputStringToFieldValue(project.getId(), field, value);
   }
 
-  // TODO custom handlers for all system fiels
+  // TODO custom handlers for all system fields
   private String[] mapUserInputStringToFieldValue(
       Long projectId, Field field, @Nullable String fieldValue) {
     if (isArrayLikeField(field)) {

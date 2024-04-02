@@ -15,6 +15,10 @@ import ru.mail.jira.plugins.myteam.service.IssueCreationService;
 @Getter
 @NotThreadSafe
 public class CustomFieldDataExtractor implements Function<Matcher, String> {
+
+  private static final String CUSTOMFIELD_PREFIX = "customfield_";
+  private static final String CUSTOMFIELD_SHORT_PREFIX = "#cf";
+
   private final List<CustomFieldData> customFieldData = new ArrayList<>();
   private final IssueCreationService issueCreationService;
 
@@ -24,12 +28,12 @@ public class CustomFieldDataExtractor implements Function<Matcher, String> {
 
   @Override
   public String apply(final Matcher matcher) {
-    final String cfId = matcher.group(1).replace("#cf", "");
+    final String cfId = matcher.group(1).replace(CUSTOMFIELD_SHORT_PREFIX, "");
     final Field field =
         Objects.requireNonNull(
-            issueCreationService.getField("customfield_" + cfId),
+            issueCreationService.getField(CUSTOMFIELD_PREFIX + cfId),
             "Custom field not found by id " + cfId);
-    final String cfValue = matcher.group(2).substring(0, matcher.group(2).length() - 1);
+    final String cfValue = matcher.group(2);
     customFieldData.add(new CustomFieldData(field, cfValue));
     return "";
   }
