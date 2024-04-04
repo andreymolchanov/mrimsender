@@ -708,15 +708,24 @@ public class MessageFormatter {
     String formattedMesssageBody = messageBody;
     for (final Link link : links) {
       if (link.isMasked()) {
-        formattedMesssageBody =
-            formattedMesssageBody.replaceFirst(
-                Pattern.quote(link.getMask()),
-                format(DESCRIPTION_MARKDOWN_MASKED_LINK_TEMPLATE, link.getMask(), link.getLink()));
+        try {
+          formattedMesssageBody =
+              formattedMesssageBody.replaceFirst(
+                  Pattern.quote(link.getMask()),
+                  format(
+                      DESCRIPTION_MARKDOWN_MASKED_LINK_TEMPLATE, link.getMask(), link.getLink()));
+        } catch (Exception e) {
+          SentryClient.capture(e, null, Map.of("messageBody", messageBody));
+        }
       } else {
-        formattedMesssageBody =
-            formattedMesssageBody.replaceFirst(
-                link.getLink(),
-                format(DESCRIPTION_MARKDOWN_UNMASKED_LINK_TEMPLATE, link.getLink()));
+        try {
+          formattedMesssageBody =
+              formattedMesssageBody.replaceFirst(
+                  Pattern.quote(link.getLink()),
+                  format(DESCRIPTION_MARKDOWN_UNMASKED_LINK_TEMPLATE, link.getLink()));
+        } catch (Exception e) {
+          SentryClient.capture(e, null, Map.of("messageBody", messageBody));
+        }
       }
     }
 
