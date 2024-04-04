@@ -65,7 +65,7 @@ public class IssueLinkEventToVKTeamSender
       final IssueLinkEventToChatMessageData
           issueLinkEventToChatMessageDataForDestinationIssueRecipients =
               IssueLinkEventToChatMessageData.of(
-                      sourceIssueKey,
+                  sourceIssueKey,
                   destinationIssueKey,
                   issueLinkEventRecipientsData.getSourceIssueSummary(),
                   issueLinkEventRecipientsData.getDestinationIssueSummary(),
