@@ -16,8 +16,8 @@ import ru.mail.jira.plugins.myteam.service.IssueCreationService;
 @NotThreadSafe
 public class CustomFieldDataExtractor implements Function<Matcher, String> {
 
-  private static final String CUSTOMFIELD_PREFIX = "customfield_";
-  private static final String CUSTOMFIELD_SHORT_PREFIX = "#cf";
+  public static final String CUSTOMFIELD_PREFIX = "customfield_";
+  public static final String CUSTOMFIELD_SHORT_PREFIX = "#cf";
 
   private final List<CustomFieldData> customFieldData = new ArrayList<>();
   private final IssueCreationService issueCreationService;

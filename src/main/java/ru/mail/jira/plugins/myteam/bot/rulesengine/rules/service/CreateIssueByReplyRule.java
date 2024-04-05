@@ -84,7 +84,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   private static final Pattern ISSUE_LINK_LABEL_PATTERN = Pattern.compile("\\{\\{issueLink\\}\\}");
   private static final Pattern SUMMARY_LABEL_PATTERN = Pattern.compile("\\{\\{summary\\}\\}");
   private static final Pattern CF_CUSTOM_FIELDS_DATA_PATTERN =
-      Pattern.compile("(#cf\\d+)=(\"[^\"]*\"|[^ \\r\\n\\t\\f\\v]+)", Pattern.MULTILINE);
+      Pattern.compile("(#cf\\d+)=(\"[^\"]*\"|[^#]*?(?=\\s#cf|$))", Pattern.MULTILINE);
   private static final String NO_DESCRIPTION_STRING = "Описание не заполнено";
 
   private final IssueCreationSettingsService issueCreationSettingsService;

@@ -308,9 +308,9 @@ const renderAdditionalSettings = (settings: EditableSettings): ReactElement => {
             <LineHelperMessage>{`Для передачи пользовательских полей
             необходимо следовать шаблону, например:
             #tag @BotMention
-            #cf10002=значения_поля#
-            #cf10001=значение_поля#
-            и т.д`}</LineHelperMessage>
+            #cf10002=значение поля
+            #cf10001=еще одно значение поля
+            и т.д.`}</LineHelperMessage>
           </>
         )}
       </CheckboxField>
