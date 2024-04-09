@@ -1,6 +1,7 @@
 /* (C)2020 */
 package ru.mail.jira.plugins.myteam.component;
 
+import com.atlassian.jira.bc.issue.IssueService;
 import com.atlassian.jira.exception.NotFoundException;
 import com.atlassian.jira.exception.PermissionException;
 import com.atlassian.jira.permission.GlobalPermissionKey;
@@ -26,6 +27,7 @@ import ru.mail.jira.plugins.myteam.myteam.dto.response.AdminsResponse;
 public class PermissionHelper {
 
   private final GlobalPermissionManager globalPermissionManager;
+  private final IssueService issueService;
   private final PermissionManager permissionManager;
   private final ProjectManager projectManager;
   private final UserData userData;
@@ -33,11 +35,13 @@ public class PermissionHelper {
 
   public PermissionHelper(
       @ComponentImport GlobalPermissionManager globalPermissionManager,
+      @ComponentImport IssueService issueService,
       @ComponentImport PermissionManager permissionManager,
       @ComponentImport ProjectManager projectManager,
       UserData userData,
       MyteamApiClient myteamClient) {
     this.globalPermissionManager = globalPermissionManager;
+    this.issueService = issueService;
     this.permissionManager = permissionManager;
     this.projectManager = projectManager;
     this.userData = userData;
@@ -167,5 +171,10 @@ public class PermissionHelper {
     }
     return permissionManager.hasPermission(
         ProjectPermissions.CREATE_ISSUES, project, applicationUser);
+  }
+
+  public boolean checkBrowseIssuePermission(
+      @NotNull final ApplicationUser applicationUser, @Nullable final String issueKey) {
+    return issueService.getIssue(applicationUser, issueKey).isValid();
   }
 }
