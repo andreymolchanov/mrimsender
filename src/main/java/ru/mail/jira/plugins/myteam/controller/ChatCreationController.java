@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import ru.mail.jira.plugins.myteam.bot.rulesengine.models.exceptions.LinkIssueWithChatException;
 import ru.mail.jira.plugins.myteam.commons.exceptions.MyteamServerErrorException;
+import ru.mail.jira.plugins.myteam.component.PermissionHelper;
 import ru.mail.jira.plugins.myteam.component.UserData;
 import ru.mail.jira.plugins.myteam.controller.dto.ChatCreationDataDto;
 import ru.mail.jira.plugins.myteam.controller.dto.ChatMemberDto;
@@ -49,6 +50,7 @@ public class ChatCreationController {
   private final UserData userData;
   private final UserSearchService userSearchService;
   private final MyteamService myteamService;
+  private final PermissionHelper permissionHelper;
 
   @Autowired
   public ChatCreationController(
@@ -59,7 +61,8 @@ public class ChatCreationController {
       @ComponentImport UserSearchService userSearchService,
       MyteamApiClient myteamApiClient,
       UserData userData,
-      MyteamService myteamService) {
+      MyteamService myteamService,
+      PermissionHelper permissionHelper) {
     this.jiraAuthenticationContext = jiraAuthenticationContext;
     this.issueManager = issueManager;
     this.watcherManager = watcherManager;
@@ -68,6 +71,7 @@ public class ChatCreationController {
     this.avatarService = avatarService;
     this.userData = userData;
     this.myteamService = myteamService;
+    this.permissionHelper = permissionHelper;
   }
 
   @GET
@@ -81,6 +85,11 @@ public class ChatCreationController {
     if (loggedInUser == null) {
       throw new SecurityException();
     }
+
+    if (!permissionHelper.checkBrowseIssuePermission(loggedInUser, issueKey)) {
+      throw new SecurityException();
+    }
+
     MyteamChatMetaDto chatMeta = myteamService.findChatByIssueKey(issueKey);
     if (chatMeta == null) {
       return null;
