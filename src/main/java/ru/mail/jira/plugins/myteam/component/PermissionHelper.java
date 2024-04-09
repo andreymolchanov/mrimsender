@@ -1,11 +1,9 @@
 /* (C)2020 */
 package ru.mail.jira.plugins.myteam.component;
 
-import com.atlassian.jira.exception.IssueNotFoundException;
+import com.atlassian.jira.bc.issue.IssueService;
 import com.atlassian.jira.exception.NotFoundException;
 import com.atlassian.jira.exception.PermissionException;
-import com.atlassian.jira.issue.Issue;
-import com.atlassian.jira.issue.IssueManager;
 import com.atlassian.jira.permission.GlobalPermissionKey;
 import com.atlassian.jira.permission.ProjectPermissions;
 import com.atlassian.jira.project.Project;
@@ -14,7 +12,6 @@ import com.atlassian.jira.security.GlobalPermissionManager;
 import com.atlassian.jira.security.PermissionManager;
 import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +27,7 @@ import ru.mail.jira.plugins.myteam.myteam.dto.response.AdminsResponse;
 public class PermissionHelper {
 
   private final GlobalPermissionManager globalPermissionManager;
-  private final IssueManager issueManager;
+  private final IssueService issueService;
   private final PermissionManager permissionManager;
   private final ProjectManager projectManager;
   private final UserData userData;
@@ -38,13 +35,13 @@ public class PermissionHelper {
 
   public PermissionHelper(
       @ComponentImport GlobalPermissionManager globalPermissionManager,
-      @ComponentImport IssueManager issueManager,
+      @ComponentImport IssueService issueService,
       @ComponentImport PermissionManager permissionManager,
       @ComponentImport ProjectManager projectManager,
       UserData userData,
       MyteamApiClient myteamClient) {
     this.globalPermissionManager = globalPermissionManager;
-    this.issueManager = issueManager;
+    this.issueService = issueService;
     this.permissionManager = permissionManager;
     this.projectManager = projectManager;
     this.userData = userData;
@@ -178,11 +175,6 @@ public class PermissionHelper {
 
   public boolean checkBrowseIssuePermission(
       @NotNull final ApplicationUser applicationUser, @Nullable final String issueKey) {
-    Issue issue = issueManager.getIssueByKeyIgnoreCase(issueKey);
-    if (Objects.isNull(issue)) {
-      throw new IssueNotFoundException(String.format("Issue %s not found", issueKey));
-    }
-    return permissionManager.hasPermission(
-        ProjectPermissions.BROWSE_PROJECTS, issue, applicationUser);
+    return issueService.getIssue(applicationUser, issueKey).isValid();
   }
 }
