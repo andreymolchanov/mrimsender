@@ -64,6 +64,9 @@ const config = {
     'access-request-page': [
       path.join(FRONTEND_SRC_DIR, 'access-request-page', 'index.tsx'),
     ],
+    'greenhopper-quick-create-in-epic-fix': [
+      path.join(FRONTEND_SRC_DIR, 'greenhopper-quick-create-in-epic', 'index.tsx'),
+    ],
   },
   module: {
     rules: [
@@ -134,6 +137,7 @@ const config = {
           PLUGIN_KEY + '.' + 'access.request.configuration.page',
         ],
         'access-request-page': [PLUGIN_KEY + '.' + 'access.request.page'],
+        'greenhopper-quick-create-in-epic-fix': ['jira.view.issue'],
       },
       verbose: false,
       xmlDescriptors: path.resolve(
@@ -152,6 +156,7 @@ const config = {
   ],
   externals: {
     JIRA: 'JIRA',
+    GH: 'GH',
     AJS: {
       var: 'AJS',
     },

@@ -1,5 +1,6 @@
 declare module 'AJS'
 declare module 'JIRA'
+declare module 'GH'
 declare module 'i18nStrings'
 
 declare module 'wrm/context-path'
