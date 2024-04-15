@@ -132,4 +132,14 @@
         <link linkId="myteam-chat-reminder-action"/>
         <styleClass>myteam-chat-reminder-action</styleClass>
     </web-item>
+
+    <web-resource key="myteam-epic-link-event-fix">
+        <transformation extension="js">
+            <transformer key="jsI18n"/>
+        </transformation>
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <resource type="download" name="epic-link-event-fix.js"
+                  location="ru/mail/jira/plugins/myteam/scripts/epic-link-event-fix.js"/>
+        <context>jira.view.issue</context>
+    </web-resource>
 </web>
