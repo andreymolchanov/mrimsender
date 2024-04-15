@@ -27,7 +27,9 @@ import ru.mail.jira.plugins.myteam.bot.rulesengine.models.exceptions.IssueTransi
 import ru.mail.jira.plugins.myteam.bot.rulesengine.models.exceptions.IssueWatchingException;
 import ru.mail.jira.plugins.myteam.bot.rulesengine.models.exceptions.ProjectBannedException;
 import ru.mail.jira.plugins.myteam.commons.exceptions.ValidationException;
+import ru.mail.jira.plugins.myteam.component.IssueTextConverter;
 import ru.mail.jira.plugins.myteam.component.comment.create.CommentCreateArg;
+import ru.mail.jira.plugins.myteam.myteam.dto.parts.File;
 
 public interface IssueService {
 
@@ -91,4 +93,7 @@ public interface IssueService {
 
   boolean changeIssueAssignee(String issueKey, String userMention, @Nullable ApplicationUser user)
       throws UserNotFoundException, AssigneeChangeValidationException;
+
+  IssueTextConverter.@Nullable AttachUploadInfo attachFileToIssue(
+      final Issue issue, final File file, final ApplicationUser author);
 }

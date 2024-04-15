@@ -9,12 +9,15 @@ import com.atlassian.jira.user.ApplicationUser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import kong.unirest.HttpResponse;
 import kong.unirest.UnirestException;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
@@ -301,5 +304,40 @@ public class IssueTextConverter {
       }
     }
     return outPutStrings.toString();
+  }
+
+  public IssueTextConverter.@Nullable AttachUploadInfo attachFileToIssue(
+      final Issue issue, final File file, final ApplicationUser author) {
+    final HttpResponse<FileResponse> response;
+    try {
+      response = myteamApiClient.getFile(file.getFileId());
+    } catch (MyteamServerErrorException e) {
+      SentryClient.capture(e);
+      return null;
+    }
+
+    final FileResponse fileInfo = response.getBody();
+    log.info("file url {} for load file from VK Teams", fileInfo.getUrl());
+    try (InputStream attachment = myteamApiClient.loadUrlFile(fileInfo.getUrl())) {
+      boolean uploaded = uploadAttachment(attachment, fileInfo, author, issue);
+      if (uploaded) {
+        return new AttachUploadInfo(fileInfo.getFilename(), true);
+      } else {
+        return new AttachUploadInfo(fileInfo.getFilename(), false);
+      }
+    } catch (Exception e) {
+      SentryClient.capture(
+          e,
+          null,
+          Map.of("userEmail", author.getEmailAddress(), "fileName", fileInfo.getFilename()));
+      return new AttachUploadInfo(fileInfo.getFilename(), false);
+    }
+  }
+
+  @RequiredArgsConstructor
+  @Getter
+  public static final class AttachUploadInfo {
+    private final String fileName;
+    private final boolean attached;
   }
 }
