@@ -2,7 +2,9 @@
 package ru.mail.jira.plugins.myteam.bot.rulesengine.rules.service;
 
 import static java.util.Collections.emptyList;
-import static ru.mail.jira.plugins.myteam.commons.Const.*;
+import static ru.mail.jira.plugins.myteam.commons.Const.DEFAULT_ISSUE_CREATION_SUCCESS_TEMPLATE;
+import static ru.mail.jira.plugins.myteam.commons.Const.DEFAULT_ISSUE_SUMMARY_TEMPLATE;
+import static ru.mail.jira.plugins.myteam.commons.Const.ISSUE_CREATION_BY_REPLY_PREFIX;
 
 import com.atlassian.jira.exception.NotFoundException;
 import com.atlassian.jira.issue.Issue;
@@ -17,7 +19,14 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -52,7 +61,11 @@ import ru.mail.jira.plugins.myteam.controller.dto.IssueCreationSettingsDto;
 import ru.mail.jira.plugins.myteam.myteam.dto.User;
 import ru.mail.jira.plugins.myteam.myteam.dto.parts.Forward;
 import ru.mail.jira.plugins.myteam.myteam.dto.parts.Reply;
-import ru.mail.jira.plugins.myteam.service.*;
+import ru.mail.jira.plugins.myteam.service.IssueCreationService;
+import ru.mail.jira.plugins.myteam.service.IssueCreationSettingsService;
+import ru.mail.jira.plugins.myteam.service.IssueService;
+import ru.mail.jira.plugins.myteam.service.RulesEngine;
+import ru.mail.jira.plugins.myteam.service.UserChatService;
 
 @Slf4j
 @Rule(
@@ -70,6 +83,9 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   private static final Pattern ISSUE_KEY_LABEL_PATTERN = Pattern.compile("\\{\\{issueKey\\}\\}");
   private static final Pattern ISSUE_LINK_LABEL_PATTERN = Pattern.compile("\\{\\{issueLink\\}\\}");
   private static final Pattern SUMMARY_LABEL_PATTERN = Pattern.compile("\\{\\{summary\\}\\}");
+  private static final Pattern CF_CUSTOM_FIELDS_DATA_PATTERN =
+      Pattern.compile("(#cf\\d+)=(\"[^\"]*\"|[^#]*?(?=\\s#cf|$))", Pattern.MULTILINE);
+  private static final String NO_DESCRIPTION_STRING = "Описание не заполнено";
 
   private final IssueCreationSettingsService issueCreationSettingsService;
   private final IssueCreationService issueCreationService;
@@ -130,7 +146,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
 
       List<User> reporters = getReportersFromEventParts(event);
 
-      User firstMessageReporter = reporters.size() > 0 ? reporters.get(0) : event.getFrom();
+      User firstMessageReporter = !reporters.isEmpty() ? reporters.get(0) : event.getFrom();
 
       ApplicationUser initiator = userChatService.getJiraUserFromUserChatId(event.getUserId());
 
@@ -143,9 +159,22 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
 
       HashMap<Field, String> fieldValues = new HashMap<>();
 
+      String textForResolvingSummary = event.getMessage();
+      if (Boolean.TRUE.equals(settings.getAllowedHandleCfValues())) {
+        CustomFieldDataExtractor.CustomFieldDataAndTextForResolvingSummary
+            customFieldDataAndTextForResolvingSummary =
+                resolveMainMessageOnCustomFieldData(event.getMessage());
+        customFieldDataAndTextForResolvingSummary
+            .getCustomFieldData()
+            .forEach(it -> fieldValues.put(it.getField(), it.getCfValue()));
+        textForResolvingSummary =
+            customFieldDataAndTextForResolvingSummary.getTextForResolvingSummary();
+      }
+
       SummaryAndDescriptionStatusFromMainMessage summary =
           getIssueSummary(
               event,
+              textForResolvingSummary,
               settings.getIssueSummaryTemplate(),
               firstMessageReporter,
               event.getFrom(),
@@ -175,18 +204,16 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
           eventMessagesTextConverter.findLinksInMainMessage(event);
       String description;
       String descFromMainMessage =
-          createFirstPartOfDescriptionByMainMessageText(event, linksInMessageInMainMessage, tag);
+          createFirstPartOfDescriptionByMainMessageText(
+              event, linksInMessageInMainMessage, tag, summary);
       if (summary.addDescFromParts) {
         description =
             buildFullDescFromMainAndReplyMessages(
                 descFromMainMessage, markdownFieldValueHolder.getValue());
-        fieldValues.put(
-            issueCreationService.getField(IssueFieldConstants.DESCRIPTION), description);
       } else {
         description = descFromMainMessage;
-        fieldValues.put(
-            issueCreationService.getField(IssueFieldConstants.DESCRIPTION), description);
       }
+      fieldValues.put(issueCreationService.getField(IssueFieldConstants.DESCRIPTION), description);
 
       String assigneeValue = settings.getAssignee();
       if (assigneeValue != null) {
@@ -283,6 +310,17 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
               String.format(
                   "Возникла ошибка при создании задачи.%n%n%s", e.getLocalizedMessage())));
     }
+  }
+
+  private CustomFieldDataExtractor.CustomFieldDataAndTextForResolvingSummary
+      resolveMainMessageOnCustomFieldData(final String mainEventMessage) {
+    final CustomFieldDataExtractor customFieldDataExtractor =
+        new CustomFieldDataExtractor(issueCreationService);
+    String cleanedMessageFromCfData =
+        JiraMarkdownToChatMarkdownConverter.convertToMarkdown(
+            mainEventMessage, CF_CUSTOM_FIELDS_DATA_PATTERN, customFieldDataExtractor);
+    return new CustomFieldDataExtractor.CustomFieldDataAndTextForResolvingSummary(
+        customFieldDataExtractor.getCustomFieldData(), cleanedMessageFromCfData);
   }
 
   private void tryDeleteMessageWithCreateIssueCommand(ChatMessageEvent event) {
@@ -388,31 +426,44 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
         .convertMessagesFromReplyAndForwardMessages(event::getMessageParts, issue, template)
         .orElse(
             new EventMessagesTextConverter.MarkdownFieldValueHolder(
-                "Описание не заполнено", emptyList()));
+                NO_DESCRIPTION_STRING, emptyList()));
   }
 
   private SummaryAndDescriptionStatusFromMainMessage getIssueSummary(
       ChatMessageEvent event,
+      String messageWithoutCfData,
       String template,
       User firstMessageReporter,
       User initiator,
       String tag) {
 
-    String message = event.getMessage();
+    String message = messageWithoutCfData;
 
     String comment = replaceBotMentionAndCommand(message, tag);
-    if (comment.length() != 0) {
-      List<String> split = NEW_LINE_SPLITTER.splitToList(comment);
+    if (!comment.isEmpty()) {
+      StringBuilder summaryBuilder = new StringBuilder();
+      boolean firstNewLineForResolvingSummaryFound = false;
+      for (int i = 0; i < comment.length(); i++) {
+        char c = comment.charAt(i);
+        if (c == '\n' && !firstNewLineForResolvingSummaryFound) {
+          firstNewLineForResolvingSummaryFound = true;
+          summaryBuilder.append(c);
+        } else {
+          summaryBuilder.append(c);
+        }
+      }
+      List<String> split = NEW_LINE_SPLITTER.splitToList(summaryBuilder.toString());
       String summary;
-      if (split.size() != 0) {
+      if (!split.isEmpty()) {
         summary = split.get(0);
       } else {
         summary = comment;
       }
+
       if (!event.isHasForwards() && !event.isHasReply()) {
-        return new SummaryAndDescriptionStatusFromMainMessage(summary, false);
+        return new SummaryAndDescriptionStatusFromMainMessage(summary, true, false);
       } else {
-        return new SummaryAndDescriptionStatusFromMainMessage(summary, true);
+        return new SummaryAndDescriptionStatusFromMainMessage(summary, true, true);
       }
     }
 
@@ -430,7 +481,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
       result = result.replaceAll(String.format("\\{\\{%s\\}\\}", entry.getKey()), entry.getValue());
     }
 
-    return new SummaryAndDescriptionStatusFromMainMessage(result, true);
+    return new SummaryAndDescriptionStatusFromMainMessage(result, false, true);
   }
 
   private String replaceBotMentionAndCommand(String message, String tag) {
@@ -441,22 +492,28 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   }
 
   private String createFirstPartOfDescriptionByMainMessageText(
-      final ChatMessageEvent event, final LinksInMessage linksInMessage, final String tag) {
-    return Arrays.stream(
-            replaceBotMentionAndCommand(
-                    eventMessagesTextConverter.convertToJiraMarkdownStyleMainMessage(
-                        event, linksInMessage),
-                    tag)
-                .split("\n"))
-        .skip(1)
-        .collect(Collectors.joining("\n"));
+      final ChatMessageEvent event,
+      final LinksInMessage linksInMessage,
+      final String tag,
+      final SummaryAndDescriptionStatusFromMainMessage summaryHolder) {
+    String firstPartOfDesc =
+        replaceBotMentionAndCommand(
+            eventMessagesTextConverter.convertToJiraMarkdownStyleMainMessage(event, linksInMessage),
+            tag);
+    if (summaryHolder.isCustomSummary) {
+      firstPartOfDesc =
+          firstPartOfDesc.replaceFirst(Matcher.quoteReplacement(summaryHolder.summary), "");
+    }
+
+    return firstPartOfDesc;
   }
 
   private String buildFullDescFromMainAndReplyMessages(
       final String descFromMainMessage, final String fromReplyMessage) {
     if (StringUtils.isBlank(descFromMainMessage)) {
       return fromReplyMessage;
-    } else if (StringUtils.isBlank(fromReplyMessage)) {
+    } else if (StringUtils.isBlank(fromReplyMessage)
+        || fromReplyMessage.equalsIgnoreCase(NO_DESCRIPTION_STRING)) {
       return descFromMainMessage;
     } else {
       return descFromMainMessage + "\n\n" + fromReplyMessage;
@@ -466,6 +523,7 @@ public class CreateIssueByReplyRule extends ChatAdminRule {
   @RequiredArgsConstructor
   private static class SummaryAndDescriptionStatusFromMainMessage {
     @NotNull private final String summary;
+    private final boolean isCustomSummary;
     private final boolean addDescFromParts;
   }
 }

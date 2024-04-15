@@ -7,7 +7,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.jira.plugins.myteam.commons.IssueReporter;
 import ru.mail.jira.plugins.myteam.db.model.IssueCreationSettings;
@@ -46,6 +51,7 @@ public class IssueCreationSettingsDto {
   @XmlElement private List<AdditionalIssueFieldDto> additionalFields;
   @XmlElement private Boolean allowedCreateChatLink;
   @XmlElement private Boolean allowedDeleteReplyMessage;
+  @XmlElement private Boolean allowedHandleCfValues;
 
   public IssueCreationSettingsDto(IssueCreationSettings entity) {
     this.id = entity.getID();
@@ -71,6 +77,7 @@ public class IssueCreationSettingsDto {
             .collect(Collectors.toList());
     this.allowedCreateChatLink = entity.isAllowedCreateChatLink();
     this.allowedDeleteReplyMessage = entity.isAllowedDeleteReplyMessage();
+    this.allowedHandleCfValues = entity.isAllowedHandleCfValues();
   }
 
   public IssueCreationSettingsDto(IssueCreationSettings entity, @Nullable String chatLink) {
@@ -99,5 +106,6 @@ public class IssueCreationSettingsDto {
     this.chatLink = chatLink;
     this.allowedCreateChatLink = entity.isAllowedCreateChatLink();
     this.allowedDeleteReplyMessage = entity.isAllowedDeleteReplyMessage();
+    this.allowedHandleCfValues = entity.isAllowedHandleCfValues();
   }
 }

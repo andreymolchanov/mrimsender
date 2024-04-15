@@ -14,10 +14,14 @@ import com.atlassian.jira.project.Project;
 import com.atlassian.jira.project.version.VersionManager;
 import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.sal.api.message.I18nResolver;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.jira.plugins.myteam.bot.configuration.createissue.FieldInputMessageInfo;
+import ru.mail.jira.plugins.myteam.bot.rulesengine.rules.service.CustomFieldDataExtractor;
 import ru.mail.jira.plugins.myteam.bot.rulesengine.states.issue.creation.FillingIssueFieldState;
 
 public class DefaultFieldValueHandler implements CreateIssueFieldValueHandler {
@@ -70,7 +74,7 @@ public class DefaultFieldValueHandler implements CreateIssueFieldValueHandler {
     return mapUserInputStringToFieldValue(project.getId(), field, value);
   }
 
-  // TODO custom handlers for all system fiels
+  // TODO custom handlers for all system fields
   private String[] mapUserInputStringToFieldValue(
       Long projectId, Field field, @Nullable String fieldValue) {
     if (isArrayLikeField(field)) {
@@ -81,7 +85,9 @@ public class DefaultFieldValueHandler implements CreateIssueFieldValueHandler {
 
   private String[] mapStringToArrayFieldValue(
       Long projectId, Field field, @Nullable String fieldValue) {
-    if (fieldValue == null) return new String[0];
+    if (fieldValue == null) {
+      return new String[0];
+    }
 
     List<String> fieldValues =
         Arrays.stream(fieldValue.split(",")).map(String::trim).collect(Collectors.toList());
@@ -130,19 +136,27 @@ public class DefaultFieldValueHandler implements CreateIssueFieldValueHandler {
   }
 
   private String[] mapStringToSingleFieldValue(Field field, @Nullable String fieldValue) {
-    if (fieldValue == null) return new String[0];
-
-    // no preprocessing for description and summary fields needed
-    if (field.getId().equals(IssueFieldConstants.DESCRIPTION)) {
-      return new String[] {
-        fieldValue.substring(0, Math.min(fieldValue.length(), DESCRIPTION_LIMIT))
-      };
+    if (fieldValue == null) {
+      return new String[0];
     }
 
-    if (field.getId().equals(IssueFieldConstants.SUMMARY)) {
-      return new String[] {
-        fieldValue.replaceAll("\n", " ").substring(0, Math.min(fieldValue.length(), SUMMARY_LIMIT))
-      };
+    // no preprocessing for description and summary fields needed
+    switch (field.getId()) {
+      case IssueFieldConstants.DESCRIPTION:
+        return new String[] {
+          fieldValue.substring(0, Math.min(fieldValue.length(), DESCRIPTION_LIMIT))
+        };
+      case IssueFieldConstants.SUMMARY:
+        return new String[] {
+          fieldValue
+              .replaceAll("\n", " ")
+              .substring(0, Math.min(fieldValue.length(), SUMMARY_LIMIT))
+        };
+    }
+
+    // no preprocessing for custom fields either
+    if (field.getId().startsWith(CustomFieldDataExtractor.CUSTOMFIELD_PREFIX)) {
+      return new String[] {fieldValue};
     }
 
     List<String> fieldValues =

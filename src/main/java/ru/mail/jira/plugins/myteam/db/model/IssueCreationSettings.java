@@ -3,7 +3,11 @@ package ru.mail.jira.plugins.myteam.db.model;
 
 import net.java.ao.Entity;
 import net.java.ao.OneToMany;
-import net.java.ao.schema.*;
+import net.java.ao.schema.Index;
+import net.java.ao.schema.Indexed;
+import net.java.ao.schema.Indexes;
+import net.java.ao.schema.StringLength;
+import net.java.ao.schema.Table;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.jira.plugins.myteam.commons.IssueReporter;
 
@@ -94,4 +98,8 @@ public interface IssueCreationSettings extends Entity {
 
   @Indexed
   Long getProjectId();
+
+  void setAllowedHandleCfValues(boolean allowedHandleCfValues);
+
+  boolean isAllowedHandleCfValues();
 }

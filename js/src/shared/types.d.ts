@@ -21,6 +21,7 @@ export type IssueCreationSettings = {
   addReporterInWatchers: boolean
   allowedCreateChatLink: boolean
   allowedDeleteReplyMessage: boolean
+  allowedHandleCfValues: boolean
 }
 
 export type FieldHtml = {

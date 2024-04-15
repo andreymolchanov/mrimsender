@@ -6,7 +6,11 @@ import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import net.java.ao.Query;
 import org.jetbrains.annotations.Nullable;
@@ -46,12 +50,13 @@ public class IssueCreationSettingsRepository
           entity.setIssueQuoteMessageTemplate(dto.getIssueQuoteMessageTemplate());
           entity.setAssignee(dto.getAssignee());
           entity.setLabels(
-              (dto.getLabels() == null || dto.getLabels().size() == 0)
+              (dto.getLabels() == null || dto.getLabels().isEmpty())
                   ? null
                   : String.join(IssueCreationSettingsDto.LABELS_DELIMITER, dto.getLabels()));
           entity.setAllowedCreateChatLink(Boolean.TRUE.equals(dto.getAllowedCreateChatLink()));
           entity.setAllowedDeleteReplyMessage(
               Boolean.TRUE.equals(dto.getAllowedDeleteReplyMessage()));
+          entity.setAllowedHandleCfValues(Boolean.TRUE.equals(dto.getAllowedHandleCfValues()));
 
           if (dto.getAdditionalFields() != null) {
             Map<String, AdditionalIssueField> entityAdditionalFields = new HashMap<>();
